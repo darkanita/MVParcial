@@ -1,0 +1,624 @@
+---
+title: "Trabajo Multivariado"
+subtitle: "Parcial 3"
+author: "Ana María López - Pedro Pablo Villegas - Esteban Tabares"
+date: "Noviembre, 2017"
+citation_package: natbib
+bibliography: Parcial3.bib
+biblio-style: apalike
+output: pdf_document
+keep_md: true
+---
+
+```{r load myData, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Estructura de Directorios
+dir.principal  <- '../'
+dir.funciones  <- '../RScripts'
+dir.markdown  <- '../RMarkdown'
+dir.input      <- '../Data/In/'
+dir.output     <- '../Data/Out/'
+library(car) # Transformación de poder
+library(ggplot2) # Gráficas
+library(dplyr) # Manejo de datos, ggplot2 trabaja mejor con dplyr
+library(tibble) # Caso especial de un data.frame
+library(MVN) # Pruebas de normalidad multivariada
+library(ellipse)
+#load(paste(dir.principal,"Multivariado.RData",sep=""))
+```
+## PUNTO 5.4
+Use los datos del sudor de la tabla 5.1:
+
+\centerline{\includegraphics[height=4in]{TABLA5.1.PNG}}
+
+Definimos entonces las variables de las siguiente manera:
+
+X1: Sweat Rate (Tasa de Sudor)$\\$
+X2: Sodium (Contenido de Sodio)$\\$
+X3: Potasssium (Contenido de Potasio)$\\$
+
+En total son 20 observaciones por cada una de las tres variables, adicionalmente no nos indican que la muestra proviene de una distribución Normal 3-variada por lo que usamos el estadístico $T^{2}$ de Hotelling el cual se distribuye como una F
+
+$T^{2}\sim\frac{(n-1)p}{n-p}F_{p, n-p}$
+
+* Determine los ejes de la elipsoide del 90% de confidencia para $\mu$. Determine la longitud de los ejes.
+
+Para el caso de $p=3$, los ejes de la región de confianza o Elipse de confianza y sus respectivas longitudes relativas, son determinados a partir de los eigen-valores y eigen-vectores de S.  Para los datos de la tabla 5.1 tenemos $\underline{\overline{X}}$ y $\mathrm{S}$ definida de la siguiente manera:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+X <- read.table(paste(dir.input,"T5-1.DAT",sep=""))
+H0 <- cbind(4,50,10)
+alpha <- 0.10
+colnames(X) <- c("X1","X2","X3")
+xbar1 <- mean(X$X1)
+xbar2 <- mean(X$X2)
+xbar3 <- mean(X$X3)
+n <- dim(X)[1]
+p <- dim(X)[2]
+xbar <- matrix(rbind(xbar1,xbar2,xbar3),ncol=1)
+xbar
+S <- cov(X)
+S
+S1 <- solve(S)
+#S1
+
+T2 <- n%*%(t(xbar)-H0)%*%S1%*%(xbar-t(H0))
+#T2
+
+FVC <- (n-1)*p/(n-p)*qf(1-alpha, p, n-p, lower.tail = TRUE, log.p = FALSE)
+#FVC
+
+e <- eigen(S)
+lambda <- e$values
+ei <- e$vectors
+
+#if(T2>FVC){
+#  print("Rechaza H0")
+#} else{
+#  print("Acepta H0")
+#}  
+
+
+#library(ellipse)
+#     plot(ellipse(S,centre=xbar,t=sqrt(((n-1)*p/(n*(n-p)))*qf(0.90,p,n-p))),type="l")
+#     points(xbar[1,],xbar[2,])
+
+#     eigen(S)
+```
+
+Para los eigen-valores y eigen-vectores se tiene:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+e
+```
+
+Iniciando en el centro $\underline{\overline{X}}$, los ejes del elipsoide de confianza son:
+
+$\pm\sqrt{\lambda_i}\sqrt{\dfrac{(n-1)p}{(n-p)n}F_{\alpha;p,n-p}}e_i$
+
+con $Se_i=\lambda_ie_i$ para $i=1,2,3$.
+
+Para el calculo de las semi-longitudes tenemos:
+$\pm\sqrt{\lambda_i}\sqrt{\dfrac{(n-1)p}{(n-p)n}F_{\alpha;p,n-p}}$ 
+
+Tenemos entonces para los datos que las semi-longitudes son las siguientes:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+longitudes <- matrix(sqrt(e$values)*sqrt(((n-1)*p)/((n-p)*n)*qf(1-alpha, p, n-p, lower.tail = TRUE, log.p = FALSE)),ncol=1)
+longitudes
+```
+
+Para el calculo de los ejes, usaremos los eigen-vectores, teniendo como resultado lo siguiente:
+
+
+
+$\pm(9.0506741)\begin{bmatrix}
+    -0.05084144\\
+    0.99828352\\
+    0.02907156\\
+\end{bmatrix}$
+
+$\pm(1.3607857)\begin{bmatrix}
+    -0.57370364\\
+    0.05302042\\
+    0.81734508\\
+\end{bmatrix}$
+
+$\pm(0.7292367)\begin{bmatrix}
+    0.81748351\\
+    -0.02487655\\
+    0.57541452\\
+\end{bmatrix}$
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+#longitudes[1]*e$vectors[,1]
+#longitudes[2]*e$vectors[,2]
+#longitudes[3]*e$vectors[,3]
+#e$vectors
+```
+Construimos entonces los intervalos de confianza con base en el estadístico $T^{2}$ con un nivel de confianza del $90\%$ seria el siguiente:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+cc <- qf(1-alpha, p, n-p, lower.tail = TRUE, log.p = FALSE)
+#sqrt(((n-1)*p)/((n-p))*cc)
+mu.L=xbar-matrix(sqrt(((n-1)*p)/((n-p))*cc)*sqrt(diag(S/n)),ncol=1)
+mu.U=xbar+matrix(sqrt(((n-1)*p)/((n-p))*cc)*sqrt(diag(S/n)),ncol=1)
+T <- cbind(mu.L,mu.U)
+par(mfrow =c(1,1))
+N <- c(n,n,n)
+Media <- xbar
+Desv_Estandar <- diag(S)
+T2_Low <- T[,1]
+T2_Up <- T[,2]
+Resultado <- data.frame(N, Media, Desv_Estandar,T2_Low,T2_Up)
+Resultado
+```
+
+* Construya un grafico QQ para las observaciones en tasa de sudor, contenido de sodio y contenido de potasio respectivamente.  Construir las tres posibles graficas de dispersión para las parejas de observaciones. Es la suposición de normal multivariada aceptada en este caso?
+
+Se realiza el grafico QQ para cada una de las variables:
+
+```{r ,  fig.width=8, fig.height=4, fig.align='center', echo=FALSE}
+# Diagnóstico gráfico
+par(mfrow = c(1, 3))
+qqnorm(X$X1,
+       main = "qq-plot Tasa de Sudor",
+       xlab = "Cuantiles teoricos",
+       ylab = "Cuantiles muestrales")
+qqline(X$X1, col = "red")
+
+qqnorm(X$X2,
+       main = "qq-plot Contenido de Sodio",
+       xlab = "Cuantiles teoricos",
+       ylab = "Cuantiles muestrales")
+qqline(X$X2, col = "red")
+
+qqnorm(X$X3,
+       main = "qq-plot Contenido de Potasio",
+       xlab = "Cuantiles teoricos",
+       ylab = "Cuantiles muestrales")
+qqline(X$X3, col = "red")
+
+```
+
+Del gráfico qqplot se observa que X1 y X2 son claramente normales, para X3 observamos que al principio hay un desvío de los quantiles teóricos, sin embargo podemos concluir que son normales pues solo tres observaciones se desvían de los cuantiles teóricos.
+
+```{r ,  fig.width=8, fig.height=4, fig.align='center', echo=FALSE}
+# Pruebas formales
+X1_shapiro <- shapiro.test(X$X1)
+X2_shapiro <- shapiro.test(X$X2)
+X3_shapiro <- shapiro.test(X$X3)
+
+p.univariado <- c(X1_shapiro$p.value, X2_shapiro$p.value,
+                  X3_shapiro$p.value)
+
+p.univariado <- as.data.frame(p.univariado)
+
+row.names(p.univariado) <- c("Tasa de Sudor", "Contenido de Sodio",
+                             "Contenido de Potasio")
+
+colnames(p.univariado) <- "p-valor"
+p.univariado
+```
+
+Revisando el resultado de las pruebas formales, se obtiene que los datos son normales ya que tenemos un valor de mayor de $0.5$.
+
+Graficos de dispersión:
+
+```{r ,  fig.width=8, fig.height=4, fig.align='center', echo=FALSE}
+pairs(X)
+```
+
+En los gráficos de dispersión bi-variados se observa que X1-X2 y X1-X3 tienen una clara dispersión elipsoidal lo que nos puede indicar una normalidad bi-variada. Para X2-X3 no es tan claro en la gráfica, pero da la impresión de normalidad, esto lo comprobaremos con los gráficos chi-cuadrado y pruebas de hipótesis de Mardia.
+
+Ahora se realiza el analisis bivariado por las diferentes combinaciones entre las 3 variables:
+
+```{r ,  fig.width=5, fig.height=3, fig.align='center', echo=FALSE}
+par(mfrow = c(1,3))
+X1X2 <- mardiaTest(X[, c(1, 2)], qqplot = TRUE)
+X1X3 <- mardiaTest(X[, c(1, 3)], qqplot = TRUE)
+X2X3 <- mardiaTest(X[, c(2, 3)], qqplot = TRUE)
+```
+
+Se observa que los datos para X1-X2, X1-X3 y X2-X3 siguen claramente la línea de los cuantiles teóricos de una normal bi-variada.
+
+```{r ,  fig.width=5, fig.height=8, fig.align='center', echo=FALSE}
+par(mfrow =c(1,1))
+
+bivariados <- c("X1 - X2",
+                "X1 - X3",
+                "X2 - X3")
+
+p.value.kurt <- c(X1X2@p.value.kurt,
+                  X1X3@p.value.kurt,
+                  X2X3@p.value.kurt)
+
+p.value.skew <- c(X1X2@p.value.skew,
+                  X1X3@p.value.skew,
+                  X2X3@p.value.skew)
+
+p.value.small <- c(X1X2@p.value.small,
+                  X1X3@p.value.small,
+                  X2X3@p.value.small)
+
+normalidad.bivariada <- data.frame(bivariados, p.value.kurt, p.value.skew, p.value.small)
+normalidad.bivariada
+```
+
+De la prueba de Mardia, y los valores p de la kurtosis y la asimetría y con un nivel de confianza del 95%, tenemos que ninguno rechaza la hipótesis nula de que los datos provienen de una distribución normal bi-variada.
+
+Dado que tanto las distribuciones marginales como las distribuciones bi-variadas son normales, podemos concluir que los datos distribuyen normal tres-variado.
+
+## PUNTO 5.9
+
+
+Harry Roberts, un naturalista para el departamento de Alaska Fish and Game, estudio los osos pardos con la meta de manterner una población saludable.  Mediciones en $n=61$ de osos proveen el siguiente resumen de estadisticas:
+
+Variable    |    Peso (Kg)   | Longitud Cuerpo (cm) |    Cuello (cm)    | Cintura (cm) | Longitud Cabeza (cm) | Ancho Cabeza (cm) 
+--------------- | ------------- | -------------------- | ----------------- | ------------------- | -------------------- | -----------------
+Media ($\bar{x}$) | 95.52 | 164.38 | 55.69 | 93.39 | 17.98 | 31.13
+ 
+Matriz de Varianzas-Covarianzas S:
+
+_| X1 | X2 | X3 | X4 | X5 | X6 
+------|------|------|------|------|------|------
+X1 | 3266.46 | 1343.97 | 731.54 | 1175.50 | 162.68 | 238.37 
+X2 | 1343.97 | 721.91 | 324.25 | 537.35 | 80.17 | 117.73 
+X3 | 731.54 | 324.25 | 179.28 | 281.17 | 39.15 | 56.80 
+X4 | 1175.50 | 537.35 | 281.17 | 474.98 | 63.73 | 94.85
+X5 | 162.68 | 80.17 | 39.15 | 63.73 | 9.95 | 13.88
+X6 | 238.37 | 117.73 | 56.80 | 94.85 | 13.88 | 21.26
+
+Se pide:
+
+### a) Obtenga intervalos simultáneos del 95% de confianza para muestras grandes para las seis poblaciones de las medias de los cuerpos de los osos.
+
+El análisis se realiza con base al vector de medias muestrales y a la matríz de varianzas y covarianzas muestrales de las siguientes variables:
+
+* Peso (kg)
+* longitud corporal (cm)
+* cuello (cm)
+* circunferencia (cm)
+* longitud de la cabeza (cm)
+* ancho de la cabeza (cm). 
+
+La siguiente función será utilizada para obtener los intervalos de confianza con una $\alpha=0.05$, como el enunciado indica que es una muestra grande se trabajará con la $\chi^2$:
+
+$\bar{x_i}\pm\sqrt{\chi_p^2(\alpha)}\sqrt{\dfrac{S_{ii}}{n}}$
+
+Recordemos que la formula para hallar los intervalos $T^2$ es la siguiente:
+
+$\bar{x_i} \pm  \sqrt{ \dfrac{(n-1)p}{(n-1)} F_{p,n-p}(\alpha) }  \sqrt{\dfrac{S_{ii}}{n}}$
+
+Para $i= 1,2,\cdots,6$
+		
+Donde:
+		
++ $\bar{x_i}$: Media muestral.
++ $\mu$: Media poblacional.
++ ${S_{ii}}$: Componente de la diagonal de la matriz de varianza y covarianza.
++ $n$: Número de osos.
++ $p$: Número de variables.
++ $\alpha = 0.05$.
+
+Nota: Para hallar el intervalo de confianza simultáneo de las variables, ya se tienen todos los datos y procedemos a calcular los límites superiores e inferiores y se obtiene:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+Variables <- c("Peso (Kg)","Longitud Cuerpo (cm)","Cuello (cm)","Cintura (cm)","Longitud Cabeza (cm)","Ancho Cabeza (cm)")
+x=c(95.52, 164.38, 55.69, 93.39, 17.98, 31.13  )
+s=c(3266.46, 721.91, 179.28, 474.98, 9.95, 21.26)
+n <- 61
+p <- length(x)
+alpha <- 0.05 
+chi <- qchisq(alpha, df = p)
+lim.low <- x - sqrt(chi)*sqrt(s/n)
+lim.up <- x + sqrt(chi)*sqrt(s/n)
+Longitud <- lim.up - lim.low 
+resu <- data.frame(x, s, lim.low, lim.up,Longitud)
+row.names(resu) <-  Variables
+colnames(resu) <- c("Media", "Varianza", "Lim inferior", "Lim superior", "Longitud")
+resu
+
+```
++ Peso (kg): El valor real de la media, $\mu$, de la variable estará entre $86.16kg$ y $104.88kg$ con una probabilidad del $95\%$, siendo  $86.16kg$ y $104.88kg$  el intervalo de confianza arrojado después de calcular el límite inferior y superior con base a $\bar{x_i}=95.52$ y a la varianza ${S_{ii}}=3266.46$.
+
++ Longitud Cuerpo (cm): El valor real de la media, $\mu$, de la variable estará entre $159.98cm$ y $168.78cm$ con una probabilidad del $95\%$, siendo $159.98cm$ y $168.78cm$ el intervalo de confianza arrojado después de calcular el límite inferior y superior con base a $\bar{x_i}$ = $164.38$ y a la varianza ${S_{ii}}= 721.91$.
+
++ Cuello (cm): El valor real de la media, $\mu$, de la variable estará entre $53.49cm$ y $57.88cm$ con una probabilidad del $95\%$, siendo $53.49cm$ y $57.88cm$ el intervalo de confianza arrojado después de calcular el límite inferior y superior con base a $\bar{x_i}$ = $55.69$ y a la varianza ${S_{ii}}$ = $179.28$.
+
++ Cintura (cm): El valor real de la media, $\mu$, de la variable estará entre $89.82cm$ y $96.96cm$ con una probabilidad del $95\%$, siendo $89.82cm$ y $96.96cm$ el intervalo de confianza arrojado después de calcular el límite inferior y superior con base a $\bar{x_i}$ = $93.39$ y a la varianza ${S_{ii}}$ = $474.98$.
+
++ Longitud Cabeza (cm): El valor real de la media, $\mu$, de la variable estará entre $17.46cm$ y $18.49cm$ con una probabilidad del $95\%$, siendo $17.46cm$ y $18.49cm$ el intervalo de confianza arrojado después de calcular el límite inferior y superior con base a $\bar{x_i}$ = $17.98$ y a la varianza ${S_{ii}}$ = $9.95$.
+
++ Ancho Cabeza (cm): El valor real de la media, $\mu$, de la variable estará entre $30.38cm$ y $31.88cm$ con una probabilidad del $95\%$, siendo $30.38cm$ y $31.88cm$ el intervalo de confianza arrojado después de calcular el límite inferior y superior con base a $\bar{x_i}$ = $31.13$ y a la varianza ${S_{ii}}$ = $21.26$.
+
+Comparando el resultado del intervalo con el calculo de la $T^2$ para muestras pequeñas, el resultado obtenido es el siguiente:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+f=qf(alpha, p, n-p, lower.tail=F)
+Limite_Inferior <- x-sqrt(((n-1)*p*f)/(n-p) )*sqrt(s/n)
+Limite_Superior <- x+sqrt(((n-1)*p*f)/(n-p) )*sqrt(s/n)
+Longitud <- Limite_Superior - Limite_Inferior 
+resu <- data.frame(x, s, Limite_Inferior, Limite_Superior,Longitud)
+row.names(resu) <- Variables
+colnames(resu) <- c("Media", "Varianza", "Lim inferior", "Lim superior", "Longitud")
+resu
+
+```
+
+Las longitudes de los rangos de la $T^2$ son muy grandes comparadas con las intervalos calculados con la $\chi^2$
+
+### b) Obtenga una elipse de confianza simultanea del 95% para el peso medio y la cintura media para muestras grandes.
+
+La siguiente ecuación es la fórmula general de una elipse de confianza simultanea para muestras grandes con un nivel del $95\%$ para el peso medio $\mu_1$ y la cintura media $\mu_4$ tomada de una muestra de $n=61$ osos pardos.
+
+$n\begin{bmatrix} 
+\bar{x_1}-\mu_1\\
+\bar{x_4}-\mu_4 
+\end{bmatrix}^t 
+\begin{bmatrix}
+s_{11} & s_{14}\\
+s_{14} & s_{44}
+\end{bmatrix}^{-1} 
+\begin{bmatrix} 
+\bar{x_1}-\mu_1\\
+\bar{x_4}-\mu_4
+\end{bmatrix} 
+\leq  
+\chi_{p}^2(\alpha)$
+
+Se tiene entonces:
+
+$61\begin{bmatrix} 95.52- \mu _1\\93.39- \mu _4 \end{bmatrix} ^t \begin{bmatrix}3266.46 & 1175.50 \\1175.50 & 474.98 \end{bmatrix}^{-1} \begin{bmatrix} 95.52- \mu _1\\93.39- \mu _4 \end{bmatrix} \leq  \chi_{6}^2(0.05)=1.635383$
+
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+chi <- qchisq(alpha, df = p)
+#chi
+#f<- ((n-1)*p/(n-p))*qf(alpha, p, n-p, lower.tail=F)
+#f
+#(86)3
+#84
+#F3;84(0:05)
+#p1 <- 3
+#n1 <- 87
+#((n1-1)*p1/(n1-p1))*qf(alpha, p1, n1-p1, lower.tail=F)
+
+```
+
+Donde la matriz de varianza y covarianza para las variables peso y cintura tomadas de los $61$ datos de los osos pardos está dada por:
+
+$S^{(1)}=\begin{bmatrix}3266.46 & 1175.50 \\1175.50 & 474.98 \end{bmatrix}$\\
+
+Teniendo la $S^{(1)}$ se hallan los eigen-valores y eigen-vectores para poder realizar el calculo de la elipse, se obtiene entonces:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+x1 <- c(3266.46, 1175.50 )
+x4 <- c(1175.50, 474.98 )
+S <- rbind(x1,x4)
+dbar=c(95.52, 93.39)
+e <- eigen(S)
+e
+```
+
+Así los valores propios son: 
+
+$\lambda_1 = 3695.52$  y $\lambda_2 = 45.92$, y tenemos como vectores propios por: 
+
+$\underline{e_1} = \begin{bmatrix} -0.94 \\-0.34 \end{bmatrix}$
+
+y
+
+$\underline{e_2} = \begin{bmatrix}  0.34\\-0.94 \end{bmatrix}$
+
+Las semi-longitudes estan dadas por:
+
+$\underline{x}_i\pm\sqrt{\lambda_i}\sqrt{ \chi_{p}^2(\alpha)}$
+
+Teniendo como resultado de las semi-longitudes:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+longitudes <- matrix(sqrt(e$values)*sqrt(qchisq(alpha, df = p)),ncol=1)
+longitudes
+```
+
+Ahora una indicación de la elongación de la elipse de confianza está dada por el cociente entre la longitud del eje mayor y longitud del eje menor, en este caso es:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+longitudes <- matrix(sqrt(e$values)*sqrt(qchisq(alpha, df = p)),ncol=1)
+longitudes[1]/longitudes[2]
+```	
+
+Ahora los ejes del elipsoide  de confianza del 95% son:
+
+$\pm\sqrt{3695.52}\sqrt{\chi_{6}^2(0.05)}\times\begin{bmatrix} -0.939 \\-0.343 \end{bmatrix}$  
+
+y 
+		
+$\pm  \sqrt{45.92} \sqrt{ \chi_{6}^2(0.05) }\times\begin{bmatrix}  0.342\\-0.939 \end{bmatrix}$ \\ 
+		
+donde $\chi_{6}^2(0.05)=1.635383$.
+		
+Utilizando librería "ellipse" de $R$ se procedió a calcular la elipse de confianza  del $95\%$  para las variables peso y cintura de los osos pardos.
+
+```{r ,  fig.width=3, fig.height=3, fig.align='center', echo=FALSE}
+plot(ellipse(S, centre = c(95.52, 93.39), t = sqrt(qchisq(alpha, df = p)), type="l", xlim = c(60,130), ylim = c(70, 120),lwd = 1, col = 2, main="Región de confianza del 95% para tamaño de muestra grande", xlab = "Peso", ylab = "Cintura"))
+```
+
+La figura representa una elipse de confianza simultánea del 95%  para las variables peso (kg) y cintura (cm) media de  una muestra de $61$ osos pardos.
+
+### c) Obtenga un intervalo de confianza Bonferroni del  95% para las  seis medias de la parte (a)
+
+En este punto a pesar de que se indica que es una muestra grande, se realizara el analisis de la Bonferroni con la distribución $t$ ya que hacerlo con la $\chi$ nos daria los mismos valores del punto a), se hallarán los intervalos de confianza simultáneos de Bonferroni de $95\%$ para los valores de de las $x_i$, los valores de los límites inferiores y superiores de cada variable, deben ser mayores y menores, respectivamente, en Bonferroni respecto a los hallados en punto a).
+
+La ecuación para calcular los intervalos de confianza de Bonferroni es:
+
+$\bar{x_i} \pm  t_{\frac{ \alpha }{2p},\  n-1}  \sqrt{\dfrac{S_{ii}}{n}}$
+
+Para $i= 1,2, \cdots ,6$
+
+A continuación se observa que los intervalos de confianza de Bonferroni hallados, efectivamente se encuentran entre los valores de los intervalos de confianza del punto a):
+
+Variable | Límite Inferior | Límite Superior
+------|------|------
+Peso (Kg) | 75.55 | 115.49
+Longitud Cuerpo (cm) | 154.99 | 173.77
+Cuello (cm) | 51.01 | 60.37
+Cintura (cm) | 85.78 | 101.00
+Longitud Cabeza (cm) | 16.88 | 19.08
+Ancho Cabeza (cm) | 29.52 | 32.74
+
+### d) Consulte la parte (b) construya un rectángulo de confianza del  $95\%$ para el peso medio y la cintura media  usando m = 6, compare esté  de confianza con la elipse de confianza en la parte (b)
+
+Para construir un rectángulo de Bonferroni  del $95\%$  simultaneo para las variables peso y cintura de los osos pardos y compararlo con la elipse de confianza simultánea del $95\%$ de la parte (b) se utiliza un código en el programa estadístico R.
+
+Para este código se utilizan los intervalos de confianzas de Bonferroni del inciso (c) tomando $t_{\frac{ \alpha }{2m}}$ con $m=6$
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+x=c(95.52, 164.38, 55.69, 93.39, 17.98, 31.13  )
+s=c(3266.46, 721.91, 179.28, 474.98, 9.95, 21.26)
+f=qf(0.05, 6, 55, lower.tail=F)
+inferior = x-sqrt(((61-1)*6*f)/(61-6) )*sqrt(s/61)
+superior= x+sqrt(((61-1)*6*f)/(61-6) )*sqrt(s/61)
+d=data.frame(inferior,superior)
+x1 <- c(3266.46, 1175.50 )
+x4 <- c(1175.50, 474.98 )
+S <- rbind(x1,x4)
+dbar=c(95.52, 93.39)
+v <- eigen(S)
+library(ellipse)
+plot(ellipse(S, centre = c(95.52, 93.39), t = sqrt(((61-1)*6/(61*(61-6)))*qf(0.95,6,61-6))), type="l", xlim = c(65,125), ylim = c(80, 105),lwd = 1, col = 2,
+     main="Región de confianza del 95% para tamaño de muestra grande", xlab = "Peso",
+     ylab = "Cintura")
+lines(x=c(115.49,115.49), y=c(85.78,101), lty = 2, lwd = 1)
+lines(x=c(75.55,75.55), y=c(85.78,101), lty = 2, lwd = 1)
+lines(x=c(75.55,115.49), y=c(101,101), lty = 2, lwd = 1)
+lines(x=c(75.55,115.49), y=c(85.78,85.78), lty = 2, lwd = 1)
+lines(x=c(123.72,123.72), y=c(82.64,104.14), lty = 2, lwd = 1, col = 8)
+lines(x=c(67.32,67.32), y=c(82.64,104.14), lty = 2, lwd = 1, col = 8)
+lines(x=c(67.32,123.72), y=c(104.14,104.14), lty = 2, lwd = 1, col = 8)
+lines(x=c(67.32,123.72), y=c(82.64,82.64), lty = 2, lwd = 1, col = 8)
+```
+
+La matriz de varianza y covarianza para las variables peso y cintura de los osos pardos tiene una correlación muy grande de $1175.68$, está correlación es positiva, por eso observamos que la inclinación de la gráfica para elipse de confianza esta inclinada hacia la derecha.
+		
+Notemos que los  intervalos de confianza individuales de Bonferroni calculados  para cada una de las seis variables en la parte (c) están contenidos en los intervalos de confianza individuales calculados en la parte (b) para cada una de las seis variables es decir el intervalo de confianza para  la variable peso  para un intervalo de Bonferroni es $(75.55, \ 115.49)$  y está  contenido en el intervalo $(67.32,123.72)$ por lo cual  los de Bonferroni individuales tienen menor confianza, pero más precisos de igual forma el resto de intervalo para cada variables. 
+
+### e) Obtenga  un intervalos de confianza  del  95%  de Bonferroni para Ancho medio de la cabeza - longitud media de la cabeza. El uso 	$m= 6+1=7$ permite esta afirmación, así como la declaración sobre cada media individual.
+
+Para hallar el intervalo de confianza  Bonferroni  simultaneo del 95%  para  la diferencia entre el ancho medio de la cabeza  $(\mu_5)$ y la longitud media de la cabeza $(\mu_6)$,  la diferencia de medias $\mu_6-\mu_5$ está dentro del siguiente intervalo  con $m=7$ 
+
+$\left(\bar{x_6}- \bar{x_5} -  t_{\frac{ \alpha }{2m},\  n-1}  \sqrt{\dfrac{S_{66}-2S_{65}+ S_{55}}{61}} ;\  \bar{x_6}-\bar{x_5} +  t_{\frac{ \alpha }{2m},\  n-1}  \sqrt{\dfrac{S_{66}-2S_{65}+ S_{55}}{61}}\right)$
+
+Sustituyendo los valores en la fórmula de arriba tenemos:
+
+$31.13- 17.98 \pm  t_{\frac{ 0.05 }{14} }(60) \times  \sqrt{\dfrac{21.26-2(13.88)+ 9.95}{61}}$
+
+Utilizando en programa R se calcula  $t_{\frac{ 0.05 }{14}  }(60)=  t_{0.0036  }(60) =  2.783$
+
+Haciendo  las operaciones pertinentes se llega a que 
+		
+$$12.49\leq  \mu_6-\mu _5   \leq  13.81$$
+
+De donde se puede concluir que el intervalo de confianza simultaneo  de Bonferroni del 95%  para las dos variables  de la diferencia media entre el ancho de la cabeza y la longitud de la cabeza  se encuentra entre $15.49cm$ y $13.81cm$
+
+
+## PUNTO 5.21
+
+Usando los datos del contenido mineral de los huesos de la Tabla 1.8, construya el intervalo de Bonferroni al $95\%$ para las medias individuales.  Tambien encuentre el $T^2$-Intervalo simultaneo, compare los dos intervalos hallados.
+
+\centerline{\includegraphics[height=4in]{TABLA1.8.PNG}}
+
+Definimos entonces las variables de las siguiente manera:
+
+X1: Dominant Radius$\\$
+X2: Radius$\\$
+X3: Dominant Humerus$\\$
+X4: Humerus$\\$
+X5: Dominant ulna$\\$
+X6: Ulna$\\$
+
+Para hallar los intervalos de Bonferroni y los $T^2$ se calcula $\underline{\overline{X}}$ y $\mathrm{S}$, para Bonferroni los intervalos estan dados por:
+
+$\bar{x_i} \pm  t_{\frac{ \alpha }{2p},\  n-1}  \sqrt{\dfrac{S_{ii}}{n}}$
+
+Para $T^2$ los intervalos estan dados por:
+
+$\bar{x_i} \pm \sqrt{ \dfrac{(n-1)p}{(n-1)} F_{p,n-p}(\alpha) }  \sqrt{\dfrac{S_{ii}}{n}}$
+
+Así que para los datos del ejercicio los intervalos de Bonferroni con un nivel de confianza del $95\%$ serian:
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+X <- read.table(paste(dir.input,"T1-8.DAT",sep=""),col.names = c("X1", "X2", "X3", "X4", "X5", "X6"))
+alpha <- 0.05
+xbar1 <- mean(X$X1)
+xbar2 <- mean(X$X2)
+xbar3 <- mean(X$X3)
+xbar4 <- mean(X$X4)
+xbar5 <- mean(X$X5)
+xbar6 <- mean(X$X6)
+n <- dim(X)[1]
+p <- dim(X)[2]
+xbar <- matrix(rbind(xbar1,xbar2,xbar3,xbar4,xbar5,xbar6),ncol=1)
+colnames(xbar) <- ("Media estimada")
+row.names(xbar) <- c("X1", "X2", "X3", "X4", "X5", "X6")
+print("Vector de Medias")
+xbar
+S <- cov(X)
+print("Matriz de Varianzas-Covarianzas")
+S
+S1 <- solve(S)
+print("Elementos de la diagonal de la inversa de la Matriz de Varianzas-Covarianzas")
+diag(S)
+
+cc <- qt(alpha/(2*p),n-1,lower.tail=F)
+print("Estadistico de prueba de la distribucion T")
+cc
+mu.L=xbar-cc*matrix(sqrt(diag(S/n)),ncol=1)
+mu.U=xbar+cc*matrix(sqrt(diag(S/n)),ncol=1)
+B <- cbind(mu.L,mu.U)
+print("Intervalos Bonferroni al 95% de confianza")
+B
+```
+
+A continuación se calculan los mismos intervalos pero con el método de $T^2$ fijando el $\alpha$ al 95%.
+
+```{r ,  fig.width=5, fig.height=5, fig.align='center', echo=FALSE}
+cc <- qf(1-alpha, p, n-p, lower.tail = TRUE, log.p = FALSE)
+sqrt(((n-1)*p)/((n-p))*cc)
+mu.L=xbar-matrix(sqrt(((n-1)*p)/((n-p))*cc)*sqrt(diag(S/n)),ncol=1)
+mu.U=xbar+matrix(sqrt(((n-1)*p)/((n-p))*cc)*sqrt(diag(S/n)),ncol=1)
+T <- cbind(mu.L,mu.U)
+
+print("Intervalos de T^2 al 95% de confianza")
+
+T
+```
+
+Tenemos entonces como resumen de los resultados hallados:
+
+```{r ,  fig.width=5, fig.height=8, fig.align='center', echo=FALSE}
+par(mfrow =c(1,1))
+
+Media <- xbar
+Desv_Estandar <- diag(S)
+T2_Low <- T[,1]
+T2_Up <- T[,2]
+Longitud_T2 <- T[,2]-T[,1]
+B_Low <- B[,1]
+B_Up <- B[,2]                  
+Longitud_B <- B[,2]-B[,1]               
+Resultado <- data.frame(Media, Desv_Estandar,T2_Low,T2_Up,Longitud_T2,B_Low,B_Up,Longitud_B)
+
+print("Resultados consolidados")
+Resultado <- as.data.frame(Resultado)
+rownames(Resultado) <- c("X1", "X2", "X3", "X4", "X5", "X6")
+Resultado
+```
+
+Se concluye que con un nivel de confianza las medias de las poblaciones se encuentren en los intervalos calculados, siendo los de Bonferroni más angostos (precisos).
+
+Se observa que los intervalos de Bonferroni siempre son más precisos que los intervalos producidos por el método $T^{2}$, siendo los de $Bonferroni$ más angostos lo que es una característica mejor.
+
+
+
